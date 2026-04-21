@@ -1,6 +1,6 @@
 Simple stress-testing for c++.
 
-For version 1 works only with .cpp, but this may be improved in future
+For version 1 works only with .cpp, but this may be improved in future.
 For using you just need to change `user.py` for your task, using included in `generator.py`
 Example:
 ```
