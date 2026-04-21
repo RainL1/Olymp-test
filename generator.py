@@ -63,9 +63,11 @@ def RandomPermutation(n: int) -> list:
     return ret
 
 
-def shuffleGraph(edges: list, idx: int = 0) -> None:
+def ShuffleGraph(edges: list, n: int, idx: int = 0) -> None:
     if not isinstance(edges, list):
         raise TypeError("edges must be list")
+    _require_int("n", n)
+    _require_non_negative("n", n)
     _require_int("idx", idx)
     _require_binary("idx", idx)
 
@@ -76,13 +78,12 @@ def shuffleGraph(edges: list, idx: int = 0) -> None:
             raise ValueError("each edge must have exactly 2 vertices")
         for vertex in edge:
             _require_int("edge vertex", vertex)
-            if vertex < 0:
-                raise ValueError("edge vertices must be >= 0")
+            if vertex < idx or vertex > n - 1 + idx:
+                raise ValueError(f"edge vertices must be in [{idx}, {n - 1 + idx}]")
 
-    if len(edges) == 0:
+    if n == 0 or len(edges) == 0:
         return
 
-    n = max(max(edge) for edge in edges) - idx + 1
     shuffle(edges)
     perm = RandomPermutation(n)
     for e in edges:
@@ -111,7 +112,7 @@ def RandomTree(n: int, idx: int = 0, mode: int = 1) -> list:
             edges.append([i, i - 1])
         for i in range(base, n):
             edges.append([randint(0, i - 1), i])
-    shuffleGraph(edges, 0)
+    ShuffleGraph(edges, n, 0)
     if idx:
         for e in edges:
             e[0] += 1
@@ -139,13 +140,14 @@ def RandomGraph(n: int, idx: int = 0, connected: int = 1, m: int = 0) -> list:
         raise ValueError("connected graph must have at least n - 1 edges")
 
     # if m == 0 then m is random number
+    user_unspecified_m = m == 0
     mode = randint(0, 10)
-    if m == 0:
+    if user_unspecified_m:
         if connected:
             m = randint(n - 1, max_edges)
         else:
             m = randint(0, max_edges)
-    if connected and mode == 0:
+    if connected and user_unspecified_m and mode == 0:
         return RandomTree(n, idx, mode=1)
 
     edges = []
@@ -175,7 +177,7 @@ def RandomGraph(n: int, idx: int = 0, connected: int = 1, m: int = 0) -> list:
             seen.add(key)
             edges.append([u, v])
 
-    shuffleGraph(edges, 0)
+    ShuffleGraph(edges, n, 0)
     if idx:
         for e in edges:
             e[0] += 1
@@ -224,7 +226,7 @@ def RandomDAG(n: int, idx: int = 0, m: int = 0) -> list:
     return edges
 
 
-def addWeights(edges: list, minw: int, maxw: int) -> None:
+def AddWeights(edges: list, minw: int, maxw: int) -> None:
     if not isinstance(edges, list):
         raise TypeError("edges must be list")
     _require_int("minw", minw)
@@ -241,12 +243,12 @@ def addWeights(edges: list, minw: int, maxw: int) -> None:
 
 __all__ = [
     "RandomInt",
+    "RandomString",
     "RandomArray",
     "RandomPermutation",
-    "shuffleGraph",
+    "ShuffleGraph",
     "RandomTree",
     "RandomGraph",
-    "RandomString",
     "RandomDAG",
-    "addWeights",
+    "AddWeights",
 ]

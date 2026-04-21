@@ -20,14 +20,21 @@ def get_command(file: str, name: str, tmp: str) -> list[str]:
     return shlex.split(file)
 
 
-def run(command: list[str], data: str = "") -> str:
-    return subprocess.run(
+def run(command: list[str], data: str, timeout: float) -> tuple[int, str, str]:
+    proc = subprocess.run(
         command,
         input=data,
         text=True,
         capture_output=True,
-        check=True,
-    ).stdout.strip()
+        timeout=timeout,
+    )
+    return proc.returncode, proc.stdout.strip(), proc.stderr
+
+
+def save_failure(test: str, gout: str, bout: str) -> None:
+    Path("failed_input.txt").write_text(test)
+    Path("good_out.txt").write_text(gout + "\n")
+    Path("bad_out.txt").write_text(bout + "\n")
 
 
 def main() -> None:
@@ -36,6 +43,7 @@ def main() -> None:
     parser.add_argument("--good", default="good.cpp")
     parser.add_argument("--bad", default="bad.cpp")
     parser.add_argument("--tests", type=int, default=1000)
+    parser.add_argument("--timeout", type=float, default=5.0)
     args = parser.parse_args()
 
     with TemporaryDirectory() as tmp:
@@ -44,23 +52,42 @@ def main() -> None:
         bad = get_command(args.bad, "bad", tmp)
 
         for i in range(1, args.tests + 1):
-            test = run(gen)
-            gout = run(good, test)
-            bout = run(bad, test)
+            _, test, _ = run(gen, "", args.timeout)
 
-            if gout != bout:
-                print(f"Test #{i}: DIFF")
+            try:
+                grc, gout, gerr = run(good, test, args.timeout)
+            except subprocess.TimeoutExpired:
+                print(f"\nTest #{i}: good TLE (> {args.timeout}s)")
+                save_failure(test, "", "")
+                return
+
+            try:
+                brc, bout, berr = run(bad, test, args.timeout)
+            except subprocess.TimeoutExpired:
+                print(f"\nTest #{i}: bad TLE (> {args.timeout}s)")
+                save_failure(test, gout, "")
+                return
+
+            if grc != 0 or brc != 0 or gout != bout:
+                print(f"\nTest #{i}: DIFF (good rc={grc}, bad rc={brc})")
                 print("Input:")
                 print(test)
                 print("Good:")
                 print(gout)
+                if gerr:
+                    print("Good stderr:")
+                    print(gerr, end="")
                 print("Bad:")
                 print(bout)
+                if berr:
+                    print("Bad stderr:")
+                    print(berr, end="")
+                save_failure(test, gout, bout)
                 return
 
-            print(f"Test #{i}: OK")
+            print(f"\rTest #{i}: OK", end="", flush=True)
 
-    print("No differences found.")
+    print(f"\nNo differences found in {args.tests} tests.")
 
 
 if __name__ == "__main__":
