@@ -1,8 +1,0 @@
-__pycache__/
-*.pyc
-*.exe
-failed_input.txt
-good_out.txt
-bad_out.txt
-.claude/
-.gitignore.save
