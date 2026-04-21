@@ -28,5 +28,6 @@ Features in `generator.py` for now:
 "RandomPermutation",
 "shuffleGraph",
 "RandomTree",
-"RandomGraph".
+"RandomGraph", 
+"RandomString".
 
