@@ -23,11 +23,15 @@ After that you may run `main.py` using `python main.py --gen --good --bad --test
 user.py, good.cpp, bad.cpp, 1000
 
 Features in `generator.py` for now:
-"RandomInt",
-"RandomArray",
-"RandomPermutation",
-"shuffleGraph",
-"RandomTree",
-"RandomGraph", 
-"RandomString".
+- `RandomInt(minn, maxn)` — random int in `[minn, maxn]`.
+- `RandomString(n, alphabet=string.ascii_letters)` — random string of length `n` from given alphabet.
+- `RandomArray(n, minn, maxn, distinct=0)` — array of `n` ints in `[minn, maxn]`; `distinct=1` gives array with all diff vals (requires `n <= maxn - minn + 1`).
+- `RandomPermutation(n)` — random permutation of `1..n`.
+- `shuffleGraph(edges, idx=0)` — shuffles edges, changes perm of verteces, swap u, v randomly
+- `RandomTree(n, idx=0, mode=1)` — random tree on `n` vertices as list of edges `[[u, v], ...]`. mode=1 is for random parent picker method, mode=2 is big depth(>=n/3)
+- `RandomGraph(n, idx=0, connected=1, m=0)` — random simple graph with `m` edges (`m=0` picks `m` randomly).
+- `RandomDAG(n, idx=0, m=0)` — random DAG with `m` edges (`m=0` picks `m` randomly). 
+- `addWeights(edges, minw, maxw)` — appends a random weight in `[minw, maxw]` to each edge `[u, v]` → `[u, v, w]`. Works for tree, graph, DAG.
+
+`idx` parameter is binary: `0` for 0-indexed output, `1` for 1-indexed.
 

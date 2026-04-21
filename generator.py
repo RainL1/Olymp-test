@@ -28,17 +28,30 @@ def RandomInt(minn: int, maxn: int) -> int:
         raise ValueError("minn must be <= maxn")
     return randint(minn, maxn)
 
-def RandomString(n: int) -> str:
-    return ''.join(random.choices(string.ascii_letters, n))
+
+def RandomString(n: int, alphabet: str = string.ascii_letters) -> str:
+    _require_int("n", n)
+    _require_non_negative("n", n)
+    if not isinstance(alphabet, str):
+        raise TypeError("alphabet must be str")
+    if len(alphabet) == 0:
+        raise ValueError("alphabet must be non-empty")
+    return ''.join(choices(alphabet, k=n))
 
 
-def RandomArray(n: int, minn: int, maxn: int) -> list:
+def RandomArray(n: int, minn: int, maxn: int, distinct: int = 0) -> list:
     _require_int("n", n)
     _require_int("minn", minn)
     _require_int("maxn", maxn)
+    _require_int("distinct", distinct)
     _require_non_negative("n", n)
+    _require_binary("distinct", distinct)
     if minn > maxn:
         raise ValueError("minn must be <= maxn")
+    if distinct:
+        if n > maxn - minn + 1:
+            raise ValueError("n must be <= maxn - minn + 1 if distinct")
+        return sample(range(minn, maxn + 1), n)
     return [randint(minn, maxn) for i in range(n)]
 
 
@@ -72,17 +85,17 @@ def shuffleGraph(edges: list, idx: int = 0) -> None:
     n = max(max(edge) for edge in edges) - idx + 1
     shuffle(edges)
     perm = RandomPermutation(n)
-    for i in edges:
-        i[0], i[1] = perm[i[0] - idx] - 1 + idx, perm[i[1] - idx] - 1 + idx
+    for e in edges:
+        e[0], e[1] = perm[e[0] - idx] - 1 + idx, perm[e[1] - idx] - 1 + idx
         if RandomInt(0, 1):
-            i[0], i[1] = i[1], i[0]
+            e[0], e[1] = e[1], e[0]
 
 
 def RandomTree(n: int, idx: int = 0, mode: int = 1) -> list:
     _require_int("n", n)
     _require_int("idx", idx)
     _require_int("mode", mode)
-    _require_positive("n", n)
+    _require_non_negative("n", n)
     _require_binary("idx", idx)
     if mode not in (1, 2):
         raise ValueError("mode must be 1 or 2")
@@ -98,11 +111,11 @@ def RandomTree(n: int, idx: int = 0, mode: int = 1) -> list:
             edges.append([i, i - 1])
         for i in range(base, n):
             edges.append([randint(0, i - 1), i])
-    shuffleGraph(edges, idx)
+    shuffleGraph(edges, 0)
     if idx:
-        for i in range(n - 1):
-            edges[i][0] += 1
-            edges[i][1] += 1
+        for e in edges:
+            e[0] += 1
+            e[1] += 1
     return edges
 
 
@@ -125,31 +138,105 @@ def RandomGraph(n: int, idx: int = 0, connected: int = 1, m: int = 0) -> list:
     if connected and m != 0 and m < n - 1:
         raise ValueError("connected graph must have at least n - 1 edges")
 
-    # Not good for now for big graphs i think, just for stress for WA
     # if m == 0 then m is random number
-    # should be diff in future 
     mode = randint(0, 10)
-    edges = []
     if m == 0:
         if connected:
-            m = randint(n - 1, n * (n - 1) // 2)
+            m = randint(n - 1, max_edges)
         else:
-            m = randint(0, n * (n - 1) // 2)
+            m = randint(0, max_edges)
     if connected and mode == 0:
         return RandomTree(n, idx, mode=1)
-    if connected:
-        edges = RandomTree(n, 0, mode=1)
-    while len(edges) < m:
-        u = randint(0, n - 1)
-        v = randint(0, n - 1)
-        if u != v and [u, v] not in edges and [v, u] not in edges:
+
+    edges = []
+    if m > max_edges // 2:
+        pool = [[u, v] for u in range(n) for v in range(u + 1, n)]
+        if connected:
+            tree = RandomTree(n, 0, mode=1)
+            tree_keys = {tuple(sorted(e)) for e in tree}
+            pool = [e for e in pool if tuple(e) not in tree_keys]
+            edges = tree + sample(pool, m - (n - 1))
+        else:
+            edges = sample(pool, m)
+    else:
+        seen = set()
+        if connected:
+            edges = RandomTree(n, 0, mode=1)
+            for e in edges:
+                seen.add(tuple(sorted(e)))
+        while len(edges) < m:
+            u = randint(0, n - 1)
+            v = randint(0, n - 1)
+            if u == v:
+                continue
+            key = (u, v) if u < v else (v, u)
+            if key in seen:
+                continue
+            seen.add(key)
             edges.append([u, v])
-    shuffleGraph(edges, idx)
+
+    shuffleGraph(edges, 0)
     if idx:
-        for i in range(len(edges)):
-            edges[i][0] += 1
-            edges[i][1] += 1
+        for e in edges:
+            e[0] += 1
+            e[1] += 1
     return edges
+
+
+def RandomDAG(n: int, idx: int = 0, m: int = 0) -> list:
+    _require_int("n", n)
+    _require_int("idx", idx)
+    _require_int("m", m)
+    _require_non_negative("n", n)
+    _require_binary("idx", idx)
+    _require_non_negative("m", m)
+
+    max_edges = n * (n - 1) // 2
+    if m > max_edges:
+        raise ValueError(f"m must be <= {max_edges}")
+    if m == 0:
+        m = randint(0, max_edges)
+    if m > max_edges // 2:
+        pool = [[u, v] for u in range(n) for v in range(u + 1, n)]
+        edges = sample(pool, m)
+    else:
+        seen = set()
+        edges = []
+        while len(edges) < m:
+            u = randint(0, n - 1)
+            v = randint(0, n - 1)
+            if u == v:
+                continue
+            key = (u, v) if u < v else (v, u)
+            if key in seen:
+                continue
+            seen.add(key)
+            edges.append([key[0], key[1]])
+
+    perm = RandomPermutation(n)
+    for e in edges:
+        e[0], e[1] = perm[e[0]] - 1, perm[e[1]] - 1
+    shuffle(edges)
+    if idx:
+        for e in edges:
+            e[0] += 1
+            e[1] += 1
+    return edges
+
+
+def addWeights(edges: list, minw: int, maxw: int) -> None:
+    if not isinstance(edges, list):
+        raise TypeError("edges must be list")
+    _require_int("minw", minw)
+    _require_int("maxw", maxw)
+    if minw > maxw:
+        raise ValueError("minw must be <= maxw")
+    for e in edges:
+        if not isinstance(e, list):
+            raise TypeError("each edge must be list")
+        if len(e) != 2:
+            raise ValueError("each edge must have exactly 2 vertices (before weighting)")
+        e.append(randint(minw, maxw))
 
 
 __all__ = [
@@ -160,4 +247,6 @@ __all__ = [
     "RandomTree",
     "RandomGraph",
     "RandomString",
+    "RandomDAG",
+    "addWeights",
 ]
